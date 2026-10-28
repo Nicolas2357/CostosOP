@@ -8,16 +8,19 @@ namespace CostosOP
 {
     public partial class Form1 : Form
     {
-        private readonly SistemaCostos sis = new SistemaCostos();
+        private SistemaCostos sis = new SistemaCostos();
 
         public Form1()
         {
             InitializeComponent();
+            cmbBase.Items.Clear();
+            cmbBase.Items.AddRange(new object[] { "Horas de M.O.", "Mano de obra ($)", "Materia prima", "Partes iguales" });
+            cmbBase.SelectedIndex = 0;
+            ConstruirExtras();
             Conectar();
             RefreshAll();
         }
 
-        // ============ EVENTOS ============
         void Conectar()
         {
             btnAltaMat.Click += (s, e) => Ejecutar(() =>
@@ -28,7 +31,8 @@ namespace CostosOP
                     cmbTipoEnt.SelectedIndex == 0 ? TipoMov.Inicial : TipoMov.Compra,
                     nudCantEnt.Value, nudCostoEnt.Value), "Entrada registrada en la tarjeta de almacén");
 
-            btnEjemplo.Click += (s, e) => Ejecutar(CargarEjemplo, "Datos de ejemplo cargados");
+            btnEjemplo.Click += (s, e) => Ejecutar(CargarEjemplo,
+                "Ejercicio del Excel cargado. Termine la OP 1025 y luego prorratee por Horas de M.O.");
 
             btnAltaOP.Click += (s, e) => Ejecutar(() =>
             { sis.AltaOrden((int)nudNumOrden.Value, txtDesc.Text); nudNumOrden.Value++; txtDesc.Clear(); }, "Orden dada de alta");
@@ -38,20 +42,26 @@ namespace CostosOP
                 "Materia prima asignada a la orden");
 
             btnMO.Click += (s, e) => Ejecutar(() =>
-                sis.AsignarMO(cmbOrdenMO.SelectedItem as OrdenProduccion, txtOperario.Text, nudMO.Value), "Mano de obra asignada");
+                sis.AsignarMO(cmbOrdenMO.SelectedItem as OrdenProduccion, txtOperario.Text, nudMO.Value, nudTarifaMO.Value),
+                "Mano de obra asignada");
 
             cmbMatReq.SelectedIndexChanged += (s, e) => ActualizarCosto();
 
             btnGI.Click += (s, e) => Ejecutar(() =>
             { sis.CapturarGasto(cmbTipoGI.Text, txtDescGI.Text, nudGI.Value); txtDescGI.Clear(); }, "Gasto indirecto capturado");
 
-            btnPror.Click += (s, e) => Ejecutar(() => sis.Prorratear(cmbBase.Text), "Prorrateo aplicado a las órdenes activas");
+            btnPror.Click += (s, e) => Ejecutar(() => sis.Prorratear(cmbBase.Text), "Prorrateo aplicado a las órdenes en proceso");
 
             btnTerm.Click += (s, e) =>
             {
                 var op = cmbOrdenTerm.SelectedItem as OrdenProduccion;
-                if (op != null && MessageBox.Show("¿Marcar la orden " + op.Numero + " como TERMINADA?\nYa no podrá recibir más costos.",
-                        "Confirmar", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+                if (op != null)
+                {
+                    string aviso = "¿Marcar la orden " + op.Numero + " como TERMINADA?\nYa no podrá recibir más costos.";
+                    if (sis.Gastos.Any(g => !g.Prorrateado))
+                        aviso += "\n\nOJO: hay gastos indirectos sin prorratear; esta orden NO los recibirá.";
+                    if (MessageBox.Show(aviso, "Confirmar", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+                }
                 Ejecutar(() => { sis.Terminar(op, nudUnidades.Value); nudUnidades.Value = 0; }, "Orden terminada y costeada");
             };
         }
@@ -71,7 +81,6 @@ namespace CostosOP
             RefreshAll();
         }
 
-        // ============ ENLACE DATOS -> CONTROLES ============
         static void Bind(ComboBox c, IList datos)
         {
             object sel = c.SelectedItem;
@@ -84,7 +93,7 @@ namespace CostosOP
         {
             foreach (DataGridViewRow r in g.Rows)
                 if (Convert.ToString(r.Cells[col].Value) == "Terminada")
-                    r.DefaultCellStyle.ForeColor = Color.FromArgb(21, 128, 61);
+                    r.DefaultCellStyle.ForeColor = Color.FromArgb(74, 222, 128);
         }
 
         void ActualizarCosto()
@@ -105,7 +114,6 @@ namespace CostosOP
             Bind(cmbOrdenTerm, activas.ToList());
             ActualizarCosto();
 
-            // Almacén
             dgvKardex.DataSource = sis.Movimientos.Select(m => new {
                 m.Fecha,
                 Material = m.Material.Nombre,
@@ -126,10 +134,10 @@ namespace CostosOP
             dgvSaldos.DataSource = saldos;
             dgvSaldoFinal.DataSource = saldos;
 
-            // Órdenes
             dgvOrdenes.DataSource = sis.Ordenes.Select(o => new {
                 o.Numero,
                 o.Descripcion,
+                o.Cliente,
                 Estado = o.Terminada ? "Terminada" : "En proceso",
                 MP = o.MateriaPrima,
                 MO = o.ManoObra,
@@ -137,9 +145,8 @@ namespace CostosOP
                 Total = o.CostoTotal
             }).ToList();
             Pintar(dgvOrdenes, "Estado");
-            dgvMO.DataSource = sis.ManoObra.ToList();
+            dgvMO.DataSource = sis.ManoObra.Select(r => new { r.Fecha, r.Orden, r.Operario, r.Horas, r.Tarifa, r.Monto }).ToList();
 
-            // Gastos
             dgvGI.DataSource = sis.Gastos.Select(g => new {
                 g.Fecha,
                 g.Tipo,
@@ -151,7 +158,6 @@ namespace CostosOP
             decimal pend = sis.Gastos.Where(g => !g.Prorrateado).Sum(g => g.Monto);
             lblPend.Text = "Pendiente de prorratear: $" + pend.ToString("N2");
 
-            // Resultados
             dgvResumen.DataSource = sis.Ordenes.Select(o => new {
                 Orden = o.Numero,
                 o.Descripcion,
@@ -171,35 +177,51 @@ namespace CostosOP
                 sis.Ordenes.Sum(o => o.MateriaPrima), sis.Ordenes.Sum(o => o.ManoObra),
                 sis.Ordenes.Sum(o => o.GastosIndirectos), costoTot, invFinal);
 
-            // KPIs
             lblKpiInv.Text = "$ " + invFinal.ToString("N2");
             lblKpiOrd.Text = activas.Count.ToString();
             lblKpiGI.Text = "$ " + pend.ToString("N2");
             lblKpiCosto.Text = "$ " + costoTot.ToString("N2");
+
+            RefreshExtras();
         }
 
-        // ============ DATOS DE EJEMPLO ============
+        // ============ EJERCICIO DE TU EXCEL (Ejercicio_Ordenes_3) ============
         void CargarEjemplo()
         {
-            if (sis.Materiales.Any()) throw new InvalidOperationException("Ya hay datos cargados.");
-            sis.AltaMaterial("MP-01", "Madera (tabla)", "pza");
-            sis.AltaMaterial("MP-02", "Tela", "m");
-            var a = sis.Materiales[0]; var b = sis.Materiales[1];
-            sis.Entrada(a, TipoMov.Inicial, 500, 40);
-            sis.Entrada(b, TipoMov.Inicial, 300, 25);
-            sis.Entrada(a, TipoMov.Compra, 200, 44);
-            sis.AltaOrden(1050, "Sillas ejecutivas");
-            sis.AltaOrden(1051, "Sofás");
-            sis.AltaOrden(1052, "Mesas");
-            sis.Salida(a, sis.Ordenes[0], 150); sis.Salida(b, sis.Ordenes[0], 80);
-            sis.Salida(a, sis.Ordenes[1], 200); sis.Salida(b, sis.Ordenes[1], 120);
-            sis.Salida(a, sis.Ordenes[2], 100);
-            sis.AsignarMO(sis.Ordenes[0], "Juan Pérez", 8000);
-            sis.AsignarMO(sis.Ordenes[1], "Luis Gómez", 12000);
-            sis.AsignarMO(sis.Ordenes[2], "Ana Ruiz", 5000);
-            sis.CapturarGasto("Sueldos supervisores", "Supervisor de planta", 9000);
-            sis.CapturarGasto("Luz", "Recibo CFE", 3500);
-            sis.CapturarGasto("Materia prima indirecta", "Pegamento, clavos", 1500);
+            if (sis.Materiales.Any() || sis.Ordenes.Any()) throw new InvalidOperationException("Ya hay datos cargados.");
+            foreach (var n in new[] { "A", "B", "C", "D" }) sis.AltaMaterial("MAT-" + n, "Material " + n, "pza");
+            var a = sis.Materiales[0]; var b = sis.Materiales[1]; var c = sis.Materiales[2]; var d = sis.Materiales[3];
+            sis.Entrada(a, TipoMov.Inicial, 300, 50); sis.Entrada(a, TipoMov.Compra, 250, 65);
+            sis.Entrada(b, TipoMov.Inicial, 450, 75); sis.Entrada(b, TipoMov.Compra, 150, 80);
+            sis.Entrada(c, TipoMov.Inicial, 320, 30); sis.Entrada(c, TipoMov.Compra, 280, 32);
+            sis.Entrada(d, TipoMov.Inicial, 500, 35);
+
+            sis.AltaOrden(1025, "Juguetes"); sis.AltaOrden(1026, "Juguetes"); sis.AltaOrden(1027, "Juegos didácticos");
+            var o25 = sis.Ordenes[0]; var o26 = sis.Ordenes[1]; var o27 = sis.Ordenes[2];
+            o25.Cliente = "JUGUETES DEL NORTE"; o26.Cliente = "JUGUETILOMAS"; o27.Cliente = "JUEGOS DIDACTICOS DEL OESTE";
+            o25.SI_MP = 48000; o25.SI_MO = 17000; o25.SI_GI = 13500;
+
+            sis.Salida(a, o25, 50); sis.Salida(d, o25, 30);
+            sis.Salida(a, o26, 100); sis.Salida(c, o26, 150);
+            sis.Salida(b, o27, 300);
+            sis.Entrada(b, TipoMov.Compra, 250, 82);
+            sis.Entrada(d, TipoMov.Compra, 100, 36.5m);
+            sis.Salida(d, o26, 70);
+            sis.Entrada(a, TipoMov.Compra, 100, 66);
+            sis.Salida(a, o26, 50);
+            sis.Entrada(c, TipoMov.Compra, 300, 34);
+            sis.Salida(c, o27, 150);
+            sis.Salida(d, o27, 50);
+
+            sis.AsignarMO(o25, "Operarios", 50, 30);
+            sis.AsignarMO(o26, "Operarios", 100, 30); sis.AsignarMO(o26, "Operarios", 125, 30);
+            sis.AsignarMO(o27, "Operarios", 150, 20); sis.AsignarMO(o27, "Operarios", 250, 20);
+
+            sis.CapturarGasto("Sueldos supervisores", "Gasto indirecto 1", 15000);
+            sis.CapturarGasto("Luz", "Gasto indirecto 2", 5000);
+            sis.CapturarGasto("Servicios", "Gasto indirecto 3", 3800);
+            sis.CapturarGasto("Sueldos supervisores", "Gasto indirecto 4", 15000);
+            sis.Recalcular();
         }
     }
 }
