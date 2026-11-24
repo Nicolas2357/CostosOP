@@ -18,6 +18,7 @@ namespace CostosOP
             cmbBase.SelectedIndex = 0;
             ConstruirExtras();
             Conectar();
+            ConstruirMenu();
             RefreshAll();
         }
 
@@ -93,7 +94,7 @@ namespace CostosOP
         {
             foreach (DataGridViewRow r in g.Rows)
                 if (Convert.ToString(r.Cells[col].Value) == "Terminada")
-                    r.DefaultCellStyle.ForeColor = Color.FromArgb(74, 222, 128);
+                    r.DefaultCellStyle.ForeColor = Color.FromArgb(46, 125, 50);
         }
 
         void ActualizarCosto()

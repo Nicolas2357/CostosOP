@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 
 namespace CostosOP
@@ -13,28 +15,32 @@ namespace CostosOP
             base.Dispose(disposing);
         }
 
-        // ---------- Paleta oscura ----------
-        static readonly Color Fondo = Color.FromArgb(18, 22, 33);
-        static readonly Color Header = Color.FromArgb(10, 14, 23);
-        static readonly Color Panel1 = Color.FromArgb(30, 36, 51);
-        static readonly Color Panel2 = Color.FromArgb(38, 46, 66);
-        static readonly Color Campo = Color.FromArgb(17, 22, 34);
-        static readonly Color Borde = Color.FromArgb(55, 65, 85);
-        static readonly Color Texto = Color.FromArgb(229, 231, 235);
-        static readonly Color Gris = Color.FromArgb(148, 163, 184);
-        static readonly Color Accent = Color.FromArgb(37, 99, 235);
-        static readonly Color AccentClaro = Color.FromArgb(96, 165, 250);
-        static readonly Color Naranja = Color.FromArgb(234, 88, 12);
-        static readonly Color NaranjaClaro = Color.FromArgb(251, 146, 60);
-        static readonly Color Verde = Color.FromArgb(22, 163, 74);
-        static readonly Color VerdeClaro = Color.FromArgb(74, 222, 128);
-        static readonly Color BtnGris = Color.FromArgb(71, 85, 105);
+        // ---------- Paleta clara ----------
+        static readonly Color Fondo = Color.FromArgb(244, 246, 248);
+        static readonly Color Header = Color.White;
+        static readonly Color Panel1 = Color.White;
+        static readonly Color Panel2 = Color.FromArgb(238, 242, 246);
+        static readonly Color Campo = Color.White;
+        static readonly Color Borde = Color.FromArgb(226, 232, 238);
+        static readonly Color Texto = Color.FromArgb(31, 41, 51);
+        static readonly Color Gris = Color.FromArgb(107, 119, 133);
+        static readonly Color Accent = Color.FromArgb(59, 110, 150);
+        static readonly Color AccentClaro = Color.FromArgb(70, 130, 169);
+        static readonly Color Teal = Color.FromArgb(63, 168, 188);
+        static readonly Color Naranja = Color.FromArgb(194, 87, 15);
+        static readonly Color NaranjaClaro = Color.FromArgb(224, 123, 57);
+        static readonly Color Verde = Color.FromArgb(58, 130, 80);
+        static readonly Color VerdeClaro = Color.FromArgb(91, 169, 113);
+        static readonly Color Ambar = Color.FromArgb(240, 176, 64);
+        static readonly Color BtnGris = Color.FromArgb(100, 116, 139);
 
-        // ---------- Controles (mismos nombres que usa Form1.cs) ----------
-        Panel pnlHeader, pnlCuerpo; Label lblTitulo, lblSub;
-        TableLayoutPanel tlpKpi; Label lblKpiInv, lblKpiOrd, lblKpiGI, lblKpiCosto;
+        // ---------- Controles (mismos nombres que usan Form1.cs y Form1.Extras.cs) ----------
+        Panel pnlHeader, pnlMenu, pnlMain; Label lblTitulo, lblSub, lblPagina;
+        TableLayoutPanel tlpMenu; List<Label> itemsMenu = new List<Label>();
+        Label lblKpiInv, lblKpiOrd, lblKpiGI, lblKpiCosto;
+        Label lblTMat, lblTTerm, lblTMov, lblTGastos;
         StatusStrip statusStrip1; ToolStripStatusLabel lblEstado;
-        TabControl tabs; TabPage tabAlmacen, tabOrdenes, tabGastos, tabResultados;
+        TabControl tabs; TabPage tabTablero, tabAlmacen, tabOrdenes, tabGastos, tabResultados;
 
         TextBox txtCod, txtNom, txtUni;
         Button btnAltaMat, btnEjemplo, btnEnt;
@@ -62,6 +68,12 @@ namespace CostosOP
         Label lblTotales;
         DataGridView dgvResumen, dgvSaldoFinal;
 
+        static readonly string[] MenuTextos = { "Tablero", "Almacén", "Órdenes", "Gastos indirectos", "Resultados", "Hoja de costos", "Gráfica", "Correcciones" };
+        static readonly string[] MenuTitulos = { "Tablero", "Almacén (materia prima)", "Órdenes de producción", "Gastos indirectos y prorrateo",
+            "Resultados y artículos terminados", "Hoja de costos por orden", "Gráfica de costos", "Correcciones" };
+        static readonly Font FMenu = new Font("Segoe UI", 10F);
+        static readonly Font FMenuSel = new Font("Segoe UI", 10F, FontStyle.Bold);
+
         // =====================================================
         //  HELPERS DE CONSTRUCCIÓN
         // =====================================================
@@ -72,7 +84,7 @@ namespace CostosOP
                 Text = t,
                 AutoSize = true,
                 Anchor = AnchorStyles.Left,
-                Margin = new Padding(0, 4, 8, 4),
+                Margin = new Padding(0, 6, 8, 6),
                 ForeColor = Gris,
                 BackColor = Color.Transparent
             };
@@ -85,7 +97,7 @@ namespace CostosOP
                 BackColor = Campo,
                 ForeColor = Texto,
                 Anchor = AnchorStyles.Left | AnchorStyles.Right,
-                Margin = new Padding(0, 4, 14, 4)
+                Margin = new Padding(0, 5, 16, 5)
             };
         }
         static ComboBox Cb()
@@ -97,7 +109,7 @@ namespace CostosOP
                 BackColor = Campo,
                 ForeColor = Texto,
                 Anchor = AnchorStyles.Left | AnchorStyles.Right,
-                Margin = new Padding(0, 4, 14, 4)
+                Margin = new Padding(0, 5, 16, 5)
             };
         }
         static NumericUpDown Nu(int dec)
@@ -113,7 +125,7 @@ namespace CostosOP
                 BorderStyle = BorderStyle.FixedSingle,
                 TextAlign = HorizontalAlignment.Right,
                 Anchor = AnchorStyles.Left | AnchorStyles.Right,
-                Margin = new Padding(0, 4, 14, 4)
+                Margin = new Padding(0, 5, 16, 5)
             };
         }
         static Button Bt(string t, int w, Color c)
@@ -132,9 +144,24 @@ namespace CostosOP
                 Font = new Font("Segoe UI", 9F, FontStyle.Bold)
             };
             b.FlatAppearance.BorderSize = 0;
-            b.FlatAppearance.MouseOverBackColor = ControlPaint.Light(c, 0.15f);
-            b.FlatAppearance.MouseDownBackColor = ControlPaint.Dark(c, 0.1f);
+            b.FlatAppearance.MouseOverBackColor = ControlPaint.Light(c, 0.12f);
+            b.FlatAppearance.MouseDownBackColor = ControlPaint.Dark(c, 0.08f);
             return b;
+        }
+
+        // Línea de degradado al pie de las tarjetas y mosaicos
+        static Panel Tira(int alto, Color a, Color b)
+        {
+            var t = new Panel { Dock = DockStyle.Bottom, Height = alto, BackColor = a };
+            t.Paint += (s, e) =>
+            {
+                var r = t.ClientRectangle;
+                if (r.Width < 1 || r.Height < 1) return;
+                using (var br = new LinearGradientBrush(r, a, b, LinearGradientMode.Horizontal))
+                    e.Graphics.FillRectangle(br, r);
+            };
+            t.Resize += (s, e) => t.Invalidate();
+            return t;
         }
 
         static TableLayoutPanel Frm()
@@ -143,7 +170,7 @@ namespace CostosOP
             {
                 ColumnCount = 4,
                 BackColor = Panel1,
-                Padding = new Padding(14, 10, 6, 10),
+                Padding = new Padding(16, 12, 10, 12),
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 Margin = new Padding(0)
@@ -175,7 +202,7 @@ namespace CostosOP
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 WrapContents = false,
                 Anchor = AnchorStyles.Left,
-                Margin = new Padding(0, 8, 0, 2),
+                Margin = new Padding(0, 10, 0, 2),
                 BackColor = Color.Transparent
             };
             foreach (var c in cs) { c.Margin = new Padding(0, 0, 10, 0); f.Controls.Add(c); }
@@ -192,36 +219,42 @@ namespace CostosOP
             t.Controls.Add(l, 0, r);
             t.SetColumnSpan(l, 4);
         }
+
+        // Tarjeta estilo mosaico: borde fino, título, contenido y línea de degradado al pie
         static Control Tarjeta(string titulo, Control contenido)
         {
             var p = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
-                RowCount = 3,
+                RowCount = 4,
                 BackColor = Panel1,
+                Padding = new Padding(1),
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                Margin = new Padding(0, 0, 10, 0)
+                Margin = new Padding(0, 0, 12, 0)
             };
             p.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             p.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            p.RowStyles.Add(new RowStyle(SizeType.Absolute, 2F));
+            p.RowStyles.Add(new RowStyle(SizeType.Absolute, 1F));
             p.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            p.RowStyles.Add(new RowStyle(SizeType.Absolute, 4F));
             var h = new Label
             {
                 Text = titulo,
                 Dock = DockStyle.Fill,
                 AutoSize = true,
                 Margin = new Padding(0),
-                Padding = new Padding(14, 9, 0, 9),
+                Padding = new Padding(16, 12, 0, 10),
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-                ForeColor = Color.White,
-                BackColor = Panel2
+                ForeColor = Texto,
+                BackColor = Panel1
             };
-            var linea = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0), BackColor = Accent };
+            var linea = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0), BackColor = Borde };
+            var tira = Tira(4, Teal, Accent); tira.Dock = DockStyle.Fill; tira.Margin = new Padding(0);
             contenido.Dock = DockStyle.Fill; contenido.Margin = new Padding(0);
-            p.Controls.Add(h, 0, 0); p.Controls.Add(linea, 0, 1); p.Controls.Add(contenido, 0, 2);
+            p.Controls.Add(h, 0, 0); p.Controls.Add(linea, 0, 1); p.Controls.Add(contenido, 0, 2); p.Controls.Add(tira, 0, 3);
+            p.Paint += (s, e) => { using (var pen = new Pen(Borde)) e.Graphics.DrawRectangle(pen, 0, 0, p.Width - 1, p.Height - 1); };
             return p;
         }
         static TableLayoutPanel Barra(params Control[] cards)
@@ -250,7 +283,7 @@ namespace CostosOP
             {
                 Text = t,
                 Dock = d,
-                Height = 32,
+                Height = 34,
                 Padding = new Padding(2, 0, 0, 0),
                 TextAlign = ContentAlignment.MiddleLeft,
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),
@@ -258,45 +291,18 @@ namespace CostosOP
                 BackColor = Color.Transparent
             };
         }
-        static Panel Esp() { return new Panel { Dock = DockStyle.Top, Height = 8, BackColor = Color.Transparent }; }
+        static Panel Esp() { return new Panel { Dock = DockStyle.Top, Height = 10, BackColor = Color.Transparent }; }
         static TabPage Tab(string t)
         {
             return new TabPage
             {
                 Text = t,
-                Padding = new Padding(10),
+                Padding = new Padding(4, 8, 4, 4),
                 BackColor = Fondo,
                 UseVisualStyleBackColor = false,
                 ForeColor = Texto,
                 Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
-        }
-        static Panel Kpi(string titulo, Color acento, out Label valor)
-        {
-            var p = new Panel { Dock = DockStyle.Fill, BackColor = Panel1, Margin = new Padding(4) };
-            p.Controls.Add(new Panel { Dock = DockStyle.Left, Width = 5, BackColor = acento });
-            p.Controls.Add(new Label
-            {
-                Text = titulo,
-                Left = 16,
-                Top = 9,
-                AutoSize = true,
-                ForeColor = Gris,
-                BackColor = Color.Transparent,
-                Font = new Font("Segoe UI", 8.5F)
-            });
-            valor = new Label
-            {
-                Left = 16,
-                Top = 31,
-                AutoSize = true,
-                Font = new Font("Segoe UI", 16F, FontStyle.Bold),
-                ForeColor = Color.White,
-                BackColor = Color.Transparent,
-                Text = "0.00"
-            };
-            p.Controls.Add(valor);
-            return p;
         }
         static DataGridView Dg(DockStyle d, int h)
         {
@@ -315,26 +321,28 @@ namespace CostosOP
                 CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
                 GridColor = Borde,
                 EnableHeadersVisualStyles = false,
-                ColumnHeadersHeight = 36,
+                ColumnHeadersHeight = 38,
                 ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None,
                 ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing
             };
             if (h > 0) g.Height = h;
-            g.RowTemplate.Height = 28;
+            g.RowTemplate.Height = 30;
             g.DefaultCellStyle.Font = new Font("Segoe UI", 9F);
             g.DefaultCellStyle.BackColor = Panel1;
             g.DefaultCellStyle.ForeColor = Texto;
-            g.DefaultCellStyle.SelectionBackColor = Accent;
-            g.DefaultCellStyle.SelectionForeColor = Color.White;
-            g.ColumnHeadersDefaultCellStyle.BackColor = Header;
-            g.ColumnHeadersDefaultCellStyle.ForeColor = AccentClaro;
-            g.ColumnHeadersDefaultCellStyle.SelectionBackColor = Header;
-            g.ColumnHeadersDefaultCellStyle.SelectionForeColor = AccentClaro;
+            g.DefaultCellStyle.Padding = new Padding(4, 0, 4, 0);
+            g.DefaultCellStyle.SelectionBackColor = Color.FromArgb(219, 234, 245);
+            g.DefaultCellStyle.SelectionForeColor = Texto;
+            g.ColumnHeadersDefaultCellStyle.BackColor = Panel2;
+            g.ColumnHeadersDefaultCellStyle.ForeColor = Color.FromArgb(59, 71, 84);
+            g.ColumnHeadersDefaultCellStyle.SelectionBackColor = Panel2;
+            g.ColumnHeadersDefaultCellStyle.SelectionForeColor = Color.FromArgb(59, 71, 84);
+            g.ColumnHeadersDefaultCellStyle.Padding = new Padding(4, 0, 4, 0);
             g.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-            g.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(35, 42, 59);
+            g.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(249, 251, 252);
             g.AlternatingRowsDefaultCellStyle.ForeColor = Texto;
-            g.AlternatingRowsDefaultCellStyle.SelectionBackColor = Accent;
-            g.AlternatingRowsDefaultCellStyle.SelectionForeColor = Color.White;
+            g.AlternatingRowsDefaultCellStyle.SelectionBackColor = Color.FromArgb(219, 234, 245);
+            g.AlternatingRowsDefaultCellStyle.SelectionForeColor = Texto;
             g.DataBindingComplete += (s, e) =>
             {
                 foreach (DataGridViewColumn c in g.Columns)
@@ -350,6 +358,214 @@ namespace CostosOP
                 }
             };
             return g;
+        }
+
+        // ---------- Mosaicos del tablero ----------
+        static Panel Tile(string titulo, out Label valor, Color c1, Color c2)
+        {
+            var p = new Panel { Dock = DockStyle.Fill, BackColor = Panel1, Margin = new Padding(8), Padding = new Padding(1) };
+            valor = new Label
+            {
+                Dock = DockStyle.Fill,
+                Text = "0",
+                AutoSize = false,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(18, 6, 0, 0),
+                Font = new Font("Segoe UI", 20F, FontStyle.Bold),
+                ForeColor = Texto,
+                BackColor = Color.Transparent
+            };
+            var t = new Label
+            {
+                Dock = DockStyle.Bottom,
+                Height = 38,
+                Text = titulo,
+                AutoSize = false,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(18, 0, 0, 6),
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(75, 85, 99),
+                BackColor = Color.Transparent
+            };
+            p.Controls.Add(valor); p.Controls.Add(t); p.Controls.Add(Tira(4, c1, c2));
+            p.Paint += (s, e) => { using (var pen = new Pen(Borde)) e.Graphics.DrawRectangle(pen, 0, 0, p.Width - 1, p.Height - 1); };
+            return p;
+        }
+
+        Panel Accion(string simbolo, string texto, int pagina)
+        {
+            var p = new Panel { Dock = DockStyle.Fill, BackColor = Panel1, Margin = new Padding(8), Padding = new Padding(1), Cursor = Cursors.Hand };
+            var s1 = new Label
+            {
+                Dock = DockStyle.Fill,
+                Text = simbolo,
+                AutoSize = false,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font("Segoe UI", 26F, FontStyle.Bold),
+                ForeColor = Accent,
+                BackColor = Color.Transparent
+            };
+            var t = new Label
+            {
+                Dock = DockStyle.Bottom,
+                Height = 38,
+                Text = texto,
+                AutoSize = false,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Padding = new Padding(0, 0, 0, 6),
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+                ForeColor = Accent,
+                BackColor = Color.Transparent
+            };
+            var tira = Tira(4, Teal, Accent);
+            p.Controls.Add(s1); p.Controls.Add(t); p.Controls.Add(tira);
+            p.Paint += (s, e) => { using (var pen = new Pen(Borde)) e.Graphics.DrawRectangle(pen, 0, 0, p.Width - 1, p.Height - 1); };
+            EventHandler ir = (a, b) => { tabs.SelectedIndex = pagina; };
+            EventHandler entra = (a, b) => { p.BackColor = Color.FromArgb(238, 245, 250); };
+            EventHandler sale = (a, b) => { p.BackColor = Panel1; };
+            foreach (Control c in new Control[] { p, s1, t, tira })
+            { c.Click += ir; c.MouseEnter += entra; c.MouseLeave += sale; c.Cursor = Cursors.Hand; }
+            return p;
+        }
+
+        static Label Seccion(string t)
+        {
+            return new Label
+            {
+                Text = t,
+                Dock = DockStyle.Fill,
+                AutoSize = false,
+                TextAlign = ContentAlignment.BottomLeft,
+                Padding = new Padding(8, 0, 0, 6),
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                ForeColor = Texto,
+                BackColor = Color.Transparent
+            };
+        }
+
+        void ConstruirTablero()
+        {
+            var g = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 4, RowCount = 5, BackColor = Color.Transparent, Height = 490 };
+            for (int i = 0; i < 4; i++) g.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            g.RowStyles.Add(new RowStyle(SizeType.Absolute, 38F));
+            g.RowStyles.Add(new RowStyle(SizeType.Absolute, 134F));
+            g.RowStyles.Add(new RowStyle(SizeType.Absolute, 134F));
+            g.RowStyles.Add(new RowStyle(SizeType.Absolute, 46F));
+            g.RowStyles.Add(new RowStyle(SizeType.Absolute, 134F));
+
+            var s1 = Seccion("Resumen general"); g.Controls.Add(s1, 0, 0); g.SetColumnSpan(s1, 4);
+            g.Controls.Add(Tile("Inventario final de materia prima", out lblKpiInv, Teal, Accent), 0, 1);
+            g.Controls.Add(Tile("Órdenes activas", out lblKpiOrd, VerdeClaro, Accent), 1, 1);
+            g.Controls.Add(Tile("G.I. pendientes de prorratear", out lblKpiGI, Ambar, NaranjaClaro), 2, 1);
+            g.Controls.Add(Tile("Costo acumulado en órdenes", out lblKpiCosto, Teal, Accent), 3, 1);
+
+            g.Controls.Add(Tile("Materiales registrados", out lblTMat, Teal, Accent), 0, 2);
+            g.Controls.Add(Tile("Órdenes terminadas", out lblTTerm, VerdeClaro, Accent), 1, 2);
+            g.Controls.Add(Tile("Movimientos de almacén", out lblTMov, Teal, Accent), 2, 2);
+            g.Controls.Add(Tile("Gastos sin prorratear", out lblTGastos, Ambar, NaranjaClaro), 3, 2);
+
+            var s2 = Seccion("Acciones rápidas"); g.Controls.Add(s2, 0, 3); g.SetColumnSpan(s2, 4);
+            g.Controls.Add(Accion("+", "Registrar compra de material", 1), 0, 4);
+            g.Controls.Add(Accion("+", "Nueva orden de producción", 2), 1, 4);
+            g.Controls.Add(Accion("+", "Capturar gasto indirecto", 3), 2, 4);
+            g.Controls.Add(Accion("→", "Ver resultados", 4), 3, 4);
+
+            tabTablero.AutoScroll = true;
+            tabTablero.Controls.Add(g);
+
+            // Los conteos se actualizan solos cuando se refrescan las tablas
+            dgvSaldos.DataBindingComplete += (s, e) => { lblTMat.Text = dgvSaldos.Rows.Count.ToString(); };
+            dgvKardex.DataBindingComplete += (s, e) => { lblTMov.Text = dgvKardex.Rows.Count.ToString(); };
+            dgvResumen.DataBindingComplete += (s, e) =>
+            {
+                int n = 0;
+                foreach (DataGridViewRow r in dgvResumen.Rows)
+                    if (Convert.ToString(r.Cells["Estado"].Value) == "Terminada") n++;
+                lblTTerm.Text = n.ToString();
+            };
+            dgvGI.DataBindingComplete += (s, e) =>
+            {
+                int n = 0;
+                foreach (DataGridViewRow r in dgvGI.Rows)
+                    if (Convert.ToString(r.Cells["Prorrateado"].Value) == "Pendiente") n++;
+                lblTGastos.Text = n.ToString();
+            };
+        }
+
+        // ---------- Menú lateral (se llama desde Form1.cs después de ConstruirExtras) ----------
+        void FilaMenu(Control c)
+        {
+            int r = tlpMenu.RowStyles.Count;
+            tlpMenu.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            tlpMenu.RowCount = r + 1;
+            c.Dock = DockStyle.Fill; c.Margin = new Padding(0);
+            tlpMenu.Controls.Add(c, 0, r);
+        }
+
+        void ConstruirMenu()
+        {
+            var grupos = new Dictionary<int, string> { { 0, "PRINCIPAL" }, { 1, "OPERACIÓN" }, { 4, "REPORTES" }, { 7, "AJUSTES" } };
+            tlpMenu.SuspendLayout();
+            itemsMenu.Clear();
+            for (int i = 0; i < tabs.TabPages.Count; i++)
+            {
+                if (grupos.ContainsKey(i))
+                    FilaMenu(new Label
+                    {
+                        Text = grupos[i],
+                        AutoSize = false,
+                        Height = 38,
+                        TextAlign = ContentAlignment.BottomLeft,
+                        Padding = new Padding(24, 0, 0, 6),
+                        Font = new Font("Segoe UI", 8F, FontStyle.Bold),
+                        ForeColor = Gris,
+                        BackColor = Panel1
+                    });
+
+                int idx = i;
+                var lbl = new Label
+                {
+                    Text = i < MenuTextos.Length ? MenuTextos[i] : tabs.TabPages[i].Text,
+                    AutoSize = false,
+                    Height = 42,
+                    TextAlign = ContentAlignment.MiddleLeft,
+                    Padding = new Padding(26, 0, 0, 0),
+                    Font = FMenu,
+                    ForeColor = Texto,
+                    BackColor = Panel1,
+                    Cursor = Cursors.Hand,
+                    Tag = false
+                };
+                lbl.Click += (s, e) => { tabs.SelectedIndex = idx; };
+                lbl.MouseEnter += (s, e) => { if (!(bool)lbl.Tag) lbl.BackColor = Panel2; };
+                lbl.MouseLeave += (s, e) => { if (!(bool)lbl.Tag) lbl.BackColor = Panel1; };
+                lbl.Paint += (s, e) =>
+                {
+                    if ((bool)lbl.Tag)
+                        using (var br = new SolidBrush(Accent)) e.Graphics.FillRectangle(br, 0, 0, 4, lbl.Height);
+                };
+                itemsMenu.Add(lbl);
+                FilaMenu(lbl);
+            }
+            tlpMenu.ResumeLayout(true);
+            tabs.SelectedIndexChanged += (s, e) => MarcarMenu();
+            MarcarMenu();
+        }
+
+        void MarcarMenu()
+        {
+            for (int i = 0; i < itemsMenu.Count; i++)
+            {
+                bool sel = i == tabs.SelectedIndex;
+                var l = itemsMenu[i];
+                l.Tag = sel;
+                l.BackColor = sel ? Color.FromArgb(225, 236, 246) : Panel1;
+                l.ForeColor = sel ? Accent : Texto;
+                l.Font = sel ? FMenuSel : FMenu;
+                l.Invalidate();
+            }
+            int k = tabs.SelectedIndex;
+            lblPagina.Text = k >= 0 && k < MenuTitulos.Length ? MenuTitulos[k] : (k >= 0 ? tabs.TabPages[k].Text : "");
         }
 
         // =====================================================
@@ -369,56 +585,88 @@ namespace CostosOP
             BackColor = Fondo;
             ForeColor = Texto;
 
-            // ----- Encabezado -----
-            pnlHeader = new Panel { Dock = DockStyle.Top, Height = 68, BackColor = Header };
-            pnlHeader.Controls.Add(new Panel { Dock = DockStyle.Bottom, Height = 3, BackColor = Accent });
+            // ----- Barra superior -----
+            pnlHeader = new Panel { Dock = DockStyle.Top, Height = 62, BackColor = Header };
+            pnlHeader.Controls.Add(new Panel { Dock = DockStyle.Bottom, Height = 1, BackColor = Borde });
+            var logo = new Label
+            {
+                Text = "C",
+                Left = 20,
+                Top = 13,
+                Width = 36,
+                Height = 36,
+                TextAlign = ContentAlignment.MiddleCenter,
+                BackColor = Accent,
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 14F, FontStyle.Bold)
+            };
             lblTitulo = new Label
             {
-                Text = "SISTEMA DE COSTOS POR ÓRDENES DE PRODUCCIÓN",
-                Left = 20,
+                Text = "Costos por Órdenes de Producción",
+                Left = 68,
                 Top = 9,
                 AutoSize = true,
-                ForeColor = Color.White,
+                ForeColor = Texto,
                 BackColor = Color.Transparent,
-                Font = new Font("Segoe UI", 15F, FontStyle.Bold)
+                Font = new Font("Segoe UI", 13F, FontStyle.Bold)
             };
             lblSub = new Label
             {
-                Text = "Materia prima  ·  Mano de obra  ·  Gastos indirectos  ·  Artículos terminados",
-                Left = 22,
-                Top = 40,
+                Text = "Materia prima · Mano de obra · Gastos indirectos",
+                Left = 70,
+                Top = 34,
                 AutoSize = true,
                 ForeColor = Gris,
-                BackColor = Color.Transparent
+                BackColor = Color.Transparent,
+                Font = new Font("Segoe UI", 8.5F)
             };
-            pnlHeader.Controls.Add(lblTitulo); pnlHeader.Controls.Add(lblSub);
-
-            // ----- KPIs -----
-            tlpKpi = new TableLayoutPanel { Dock = DockStyle.Top, Height = 92, ColumnCount = 4, RowCount = 1, Padding = new Padding(6, 8, 6, 0), BackColor = Color.Transparent };
-            for (int i = 0; i < 4; i++) tlpKpi.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-            tlpKpi.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tlpKpi.Controls.Add(Kpi("INVENTARIO FINAL DE MP", AccentClaro, out lblKpiInv), 0, 0);
-            tlpKpi.Controls.Add(Kpi("ÓRDENES ACTIVAS", VerdeClaro, out lblKpiOrd), 1, 0);
-            tlpKpi.Controls.Add(Kpi("G.I. PENDIENTES DE PRORRATEAR", NaranjaClaro, out lblKpiGI), 2, 0);
-            tlpKpi.Controls.Add(Kpi("COSTO ACUMULADO EN ÓRDENES", Color.FromArgb(167, 139, 250), out lblKpiCosto), 3, 0);
+            pnlHeader.Controls.Add(logo); pnlHeader.Controls.Add(lblTitulo); pnlHeader.Controls.Add(lblSub);
 
             // ----- Barra de estado -----
-            statusStrip1 = new StatusStrip { BackColor = Header, ForeColor = Gris, SizingGrip = false };
+            statusStrip1 = new StatusStrip { BackColor = Color.White, ForeColor = Gris, SizingGrip = false };
             lblEstado = new ToolStripStatusLabel("Listo") { ForeColor = Gris };
             statusStrip1.Items.Add(lblEstado);
 
-            // ----- Tabs -----
-            tabs = new DarkTabControl { Dock = DockStyle.Fill, Padding = new Point(22, 8), Font = new Font("Segoe UI", 10F, FontStyle.Bold) };
+            // ----- Menú lateral -----
+            pnlMenu = new Panel { Dock = DockStyle.Left, Width = 236, BackColor = Panel1 };
+            tlpMenu = new TableLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                ColumnCount = 1,
+                BackColor = Panel1,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Padding = new Padding(0, 8, 0, 0)
+            };
+            tlpMenu.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            pnlMenu.Controls.Add(tlpMenu);
+            pnlMenu.Controls.Add(new Panel { Dock = DockStyle.Right, Width = 1, BackColor = Borde });
+
+            // ----- Contenido: título de la sección + páginas -----
+            tabs = new PaginasControl { Dock = DockStyle.Fill };
+            tabTablero = Tab("Tablero");
             tabAlmacen = Tab("1. Almacén (Materia Prima)");
             tabOrdenes = Tab("2. Órdenes de Producción");
             tabGastos = Tab("3. Gastos Indirectos y Prorrateo");
             tabResultados = Tab("4. Terminados / Resultados");
-            tabs.TabPages.AddRange(new[] { tabAlmacen, tabOrdenes, tabGastos, tabResultados });
+            tabs.TabPages.AddRange(new[] { tabTablero, tabAlmacen, tabOrdenes, tabGastos, tabResultados });
 
-            pnlCuerpo = new Panel { Dock = DockStyle.Fill, Padding = new Padding(10, 4, 10, 8), BackColor = Color.Transparent };
-            pnlCuerpo.Controls.Add(tabs);
+            lblPagina = new Label
+            {
+                Dock = DockStyle.Top,
+                Height = 50,
+                Text = "Tablero",
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(4, 0, 0, 0),
+                Font = new Font("Segoe UI", 18F, FontStyle.Bold),
+                ForeColor = Texto,
+                BackColor = Color.Transparent
+            };
+            pnlMain = new Panel { Dock = DockStyle.Fill, Padding = new Padding(26, 14, 26, 8), BackColor = Fondo };
+            pnlMain.Controls.Add(tabs);
+            pnlMain.Controls.Add(lblPagina);
 
-            // =================== TAB 1: ALMACÉN ===================
+            // =================== ALMACÉN ===================
             txtCod = Tx(); txtNom = Tx(); txtUni = Tx();
             btnAltaMat = Bt("Agregar material", 150, Accent);
             btnEjemplo = Bt("Cargar datos de ejemplo", 190, BtnGris);
@@ -446,7 +694,7 @@ namespace CostosOP
             tabAlmacen.Controls.Add(Esp());
             tabAlmacen.Controls.Add(barra1);
 
-            // =================== TAB 2: ÓRDENES ===================
+            // =================== ÓRDENES ===================
             nudNumOrden = Nu(0); nudNumOrden.Minimum = 1; nudNumOrden.Value = 1050; nudNumOrden.ThousandsSeparator = false;
             txtDesc = Tx();
             btnAltaOP = Bt("Dar de alta orden", 160, Accent);
@@ -456,7 +704,7 @@ namespace CostosOP
             FilaBtn(g1, btnAltaOP);
 
             cmbOrdenMP = Cb(); cmbMatReq = Cb(); nudCantReq = Nu(2);
-            lblCostoProm = new Label { ForeColor = AccentClaro, Font = new Font("Segoe UI", 8.5F) };
+            lblCostoProm = new Label { ForeColor = Accent, Font = new Font("Segoe UI", 8.5F) };
             btnReq = Bt("Asignar MP a la orden", 180, Accent);
             var g2 = Frm();
             Fila(g2, "Orden:", cmbOrdenMP);
@@ -483,7 +731,7 @@ namespace CostosOP
             tabOrdenes.Controls.Add(Esp());
             tabOrdenes.Controls.Add(barra2);
 
-            // =================== TAB 3: GASTOS INDIRECTOS ===================
+            // =================== GASTOS INDIRECTOS ===================
             cmbTipoGI = Cb();
             cmbTipoGI.Items.AddRange(new object[] { "Materia prima indirecta", "Sueldos supervisores", "Luz", "Agua", "Servicios", "Renta", "Depreciación", "Otros" });
             cmbTipoGI.SelectedIndex = 0;
@@ -494,9 +742,9 @@ namespace CostosOP
             Fila(h1, "Descripción:", txtDescGI);
             FilaBtn(h1, btnGI);
 
-            cmbBase = Cb(); cmbBase.Items.AddRange(new object[] { "Mano de obra", "Materia prima", "Partes iguales" }); cmbBase.SelectedIndex = 0;
+            cmbBase = Cb(); cmbBase.Items.AddRange(new object[] { "Horas de M.O.", "Mano de obra ($)", "Materia prima", "Partes iguales" }); cmbBase.SelectedIndex = 0;
             btnPror = Bt("PRORRATEAR G.I. A ÓRDENES ACTIVAS", 320, Naranja);
-            lblPend = new Label { ForeColor = NaranjaClaro, Font = new Font("Segoe UI", 10F, FontStyle.Bold) };
+            lblPend = new Label { ForeColor = Naranja, Font = new Font("Segoe UI", 10F, FontStyle.Bold) };
             var h2 = Frm();
             Fila(h2, "Base de reparto:", cmbBase);
             FilaBtn(h2, btnPror);
@@ -512,7 +760,7 @@ namespace CostosOP
             tabGastos.Controls.Add(Esp());
             tabGastos.Controls.Add(barra3);
 
-            // =================== TAB 4: RESULTADOS ===================
+            // =================== RESULTADOS ===================
             cmbOrdenTerm = Cb(); nudUnidades = Nu(2);
             btnTerm = Bt("Marcar como TERMINADA", 220, Verde);
             var k1 = Frm();
@@ -525,11 +773,11 @@ namespace CostosOP
             lblTotales = new Label
             {
                 Dock = DockStyle.Bottom,
-                Height = 38,
-                Padding = new Padding(10, 0, 0, 0),
+                Height = 40,
+                Padding = new Padding(12, 0, 0, 0),
                 TextAlign = ContentAlignment.MiddleLeft,
                 BackColor = Panel2,
-                ForeColor = Color.White,
+                ForeColor = Texto,
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold)
             };
             dgvSaldoFinal = Dg(DockStyle.Bottom, 110);
@@ -541,10 +789,13 @@ namespace CostosOP
             tabResultados.Controls.Add(Esp());
             tabResultados.Controls.Add(barra4);
 
+            // =================== TABLERO ===================
+            ConstruirTablero();
+
             // ----- Orden de acoplamiento del formulario -----
-            Controls.Add(pnlCuerpo);
+            Controls.Add(pnlMain);
+            Controls.Add(pnlMenu);
             Controls.Add(statusStrip1);
-            Controls.Add(tlpKpi);
             Controls.Add(pnlHeader);
             ResumeLayout(false);
             PerformLayout();
@@ -552,34 +803,28 @@ namespace CostosOP
     }
 
     // =====================================================
-    //  TabControl con dibujo propio (tema oscuro)
+    //  TabControl sin pestañas visibles (se navega con el menú lateral)
     // =====================================================
-    public class DarkTabControl : TabControl
+    public class PaginasControl : TabControl
     {
-        public DarkTabControl()
+        const int TCM_ADJUSTRECT = 0x1328;
+
+        public PaginasControl()
         {
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
                      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             DoubleBuffered = true;
         }
 
+        protected override void WndProc(ref Message m)
+        {
+            if (m.Msg == TCM_ADJUSTRECT && !DesignMode) { m.Result = (IntPtr)1; return; }
+            base.WndProc(ref m);
+        }
+
         protected override void OnPaint(PaintEventArgs e)
         {
-            var g = e.Graphics;
-            g.Clear(Color.FromArgb(18, 22, 33));
-            for (int i = 0; i < TabCount; i++)
-            {
-                Rectangle r = GetTabRect(i);
-                bool sel = i == SelectedIndex;
-                using (var br = new SolidBrush(sel ? Color.FromArgb(30, 36, 51) : Color.FromArgb(24, 29, 43)))
-                    g.FillRectangle(br, r);
-                if (sel)
-                    using (var br = new SolidBrush(Color.FromArgb(37, 99, 235)))
-                        g.FillRectangle(br, r.Left, r.Top, r.Width, 3);
-                TextRenderer.DrawText(g, TabPages[i].Text, Font, r,
-                    sel ? Color.White : Color.FromArgb(148, 163, 184),
-                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
-            }
+            e.Graphics.Clear(Color.FromArgb(244, 246, 248));
         }
     }
 }

@@ -96,9 +96,10 @@ namespace CostosOP
                 Padding = new Padding(10, 0, 0, 0),
                 TextAlign = ContentAlignment.MiddleLeft,
                 BackColor = Panel2,
-                ForeColor = Color.White,
+                ForeColor = Texto,
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold)
             };
+        
             var der = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12, 0, 0, 0), BackColor = Color.Transparent };
             der.Controls.Add(dgvHoja); der.Controls.Add(lblHojaTot);
             der.Controls.Add(Tit("Hoja de costos de la orden", DockStyle.Top));
@@ -328,14 +329,14 @@ namespace CostosOP
     public class GraficaCostos : Control
     {
         public List<OrdenProduccion> Datos = new List<OrdenProduccion>();
-        static readonly Color cTxt = Color.FromArgb(229, 231, 235), cGris = Color.FromArgb(148, 163, 184), cLin = Color.FromArgb(55, 65, 85);
-        static readonly Color[] cols = { Color.FromArgb(96, 165, 250), Color.FromArgb(74, 222, 128), Color.FromArgb(251, 146, 60) };
+        static readonly Color cTxt = Color.FromArgb(31, 41, 51), cGris = Color.FromArgb(107, 119, 133), cLin = Color.FromArgb(230, 235, 240);
+        static readonly Color[] cols = { Color.FromArgb(70, 130, 169), Color.FromArgb(91, 169, 113), Color.FromArgb(240, 168, 60) };
         static readonly string[] nombres = { "Materia prima", "Mano de obra", "Gastos indirectos" };
 
         public GraficaCostos()
         {
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
-            BackColor = Color.FromArgb(30, 36, 51);
+            BackColor = Color.White;
         }
 
         static decimal Techo(decimal v)
