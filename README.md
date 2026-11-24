@@ -111,18 +111,3 @@ Prorrateo: 38,800 ÷ 625 horas = **62.08 por hora**, que da 13,968 para la 1026 
 
 ---
 
-## Limitaciones conocidas
-
-- No genera asientos de diario ni esquemas de mayor.
-- No tiene almacén de productos terminados, ventas ni costo de ventas.
-- Solo usa costo promedio (no PEPS ni UEPS).
-- Un solo periodo continuo (sin cierre mensual).
-- Sin usuarios ni permisos.
-
-## Mejoras futuras
-
-- Pólizas contables (Almacén → Producción en proceso → Artículos terminados).
-- Inventario de artículos terminados y ventas con costo de ventas.
-- Método PEPS además del costo promedio.
-- Cierre por periodos.
-- Base de datos (SQLite o SQL Server) en lugar de archivo JSON.
